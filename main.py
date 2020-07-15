@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from requests_html import HTMLSession
 from flask import Flask, request, render_template, redirect
 import imdb
