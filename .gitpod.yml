@@ -1,4 +1,7 @@
+
 image:
   file: .gitpod.Dockerfile
 tasks:
-  - init: command: python3 main.py
+  - init: pip3 install -r requirements.txt
+    command: python3 main.py
+    name: Split terminal
