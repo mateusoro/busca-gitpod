@@ -6,6 +6,8 @@ ports:
     onOpen: ignore
   - port: 6881
     onOpen: ignore
+  - port: 6891
+    onOpen: ignore
 tasks:
   - init: python3 main.py
     name: Split terminal

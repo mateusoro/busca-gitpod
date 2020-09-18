@@ -17,8 +17,9 @@ import libtorrent as lt
 import time
 
 ses = lt.session()
-params = {'save_path': '/workspace/busca-gitpod/downloads/'}
-ses.start_dht()
+
+ses.listen_on(6881, 6891)
+
 
 # https://www.btmulu.com/hash/
 # ps -fA | grep main.py
@@ -41,7 +42,7 @@ client = MongoClient(
     "mongodb+srv://root:root@cluster0-0rj95.mongodb.net/test?retryWrites=true")
 db = client.registros
 
-# db.registros.delete_many({'titulo' : "NOS4A2"})
+#db.registros.delete_many({'titulo' : "Mulan"})
 #db.legendado.delete_many({})
 
 import os, shutil
@@ -76,134 +77,158 @@ def automatico_ultimo():
 # set_interval(automatico_ultimo,60*20)
 
 
-def carregar_sky(links):
-    carregar_sky_forcar(links, False)
-
-
-def carregar_sky_forcar(links, forcar):
-    print('Início')
-    continuar = True
+def carregar_sky(links):    
+    print('Início: '+ str(len(links))+" links")   
     socketio.emit('atualizar', 'Detalhes do Link')
     # links = db.magnets.find({'imdb': {'$ne': ''}})
-    for l in links:
-        if continuar:
+    for l in links:       
            
-            li = l['link']
-            try:
-                ha = li[20:li.index('&')].lower()
-            except:
-                print("Erro Magnet: " + li)
-                ha = li[20:].lower()
+        li = l['link']
+        try:
+            ha = li[20:li.index('&')].lower()
+        except:
+            print("Erro Magnet: " + li)
+            ha = li[20:].lower()
 
-            nao_existe = db.registros.find({'magnet':l['link']}).count()==0
-            imdb_encontrado = len(l['imdb']) > 0
-            nao_legendado = db.legendado.find({'magnet':ha}).count()==0
+        nao_existe = db.registros.find({'magnet':l['link']}).count()==0
+        imdb_encontrado = len(l['imdb']) > 0
+        nao_legendado = db.legendado.find({'magnet':ha}).count()==0
+        print(imdb_encontrado + nao_existe + nao_legendado)
+
+        if imdb_encontrado and nao_existe and nao_legendado:
             
-            if imdb_encontrado and nao_existe and nao_legendado:
-               
-                arquivos = []
-                ingles = True                    
-              
-                arquivos = carregar_torrent_download(li)
-                for t in arquivos:
-                    if "DUAL" in t:
-                        ingles = None
-                    if "DUB" in t:
-                        ingles = None
-                    if "Dub" in t:
-                        ingles = None
-                    if "Dual" in t:
-                        ingles = None
+            arquivos = []
+            ingles = True                    
+            print("Iniciando Download "+li)
+            arquivos = carregar_torrent_download(li)
+            for t in arquivos:
+                if "DUAL" in t:
+                    ingles = None
+                if "DUB" in t:
+                    ingles = None
+                if "Dub" in t:
+                    ingles = None
+                if "Dual" in t:
+                    ingles = None
 
-                if ingles == None:
+            if ingles == None:
 
-                    ind = 0
-                    for a in arquivos:
+                ind = 0
+                for a in arquivos:
 
-                        if type(a) is str:
-                            ar = a
-                            texto = ar
-                        else:
-                            ar = a.find('td')[1].text
-                            texto = ar
-
-
-                        texto = texto.replace('[WWW.BLUDV.TV] ', '').replace(
-                        'Acesse o ORIGINAL WWW.BLUDV.TV ', '').replace(
-                            '[ACESSE COMANDOTORRENTS.COM] ', '').replace(
-                                'WWW.COMANDOTORRENTS.COM', '').replace(
-                                    'WWW.BLUDV.TV', '').replace(
-                                        '[WW.BLUDV.TV]', '').replace('WwW.LAPUMiAFiLMES.COM', '').replace('x264', '').replace('h264', '')
-                        try:
-
-                            if (texto[-3:] not in ['exe', 'txt', 'url', 'srt', 'peg', 'jpg','png','nfo', 'zip']) and (texto[-10:] not in ['sample.mkv']) and (ar not in ["COMANDOTORRENTS.COM.mp4", "BLUDV.TV.mp4", "BLUDV.mp4","LAPUMiA.mp4","File Name"]) and ("LEGENDADO" not in texto):
-
-                                convert = guessit(texto)
-
-                                print('season' in convert)
-                                if 'season' in convert:
-                                    sessao = str(convert['season'])
-
-                                    if str(convert['season']) == "[2, 1]":
-                                        sessao = "1"
-                                    episode = str(convert['episode'])
-                                    if episode == "[1, 2]":
-                                        episode = "1"
-                                    im = l['imdb'] + " " + sessao + " " + episode
-                                    print(im)
-                                    ins = {
-                                    'id': 0,
-                                    'imdb': im,
-                                    'magnet': li,
-                                    'mapa': ind,
-                                    'nome': texto
-                                    }
-                                    db.registros.insert_one(ins)
-                                    print(im, ind, convert['title'], texto)
-                                    if ('NOS4A2' in texto) or ('nos4a2' in texto):
-                                        socketio.emit('atualizar', 'Adicionado:  NOS4A2 (' + im + ") "+ texto)
-                                    else:
-                                        socketio.emit('atualizar', dumps(ins))
-                                else:
-                                    ins = {'id': 0,'imdb': l['imdb'],'magnet': li,'mapa': ind,'nome': texto}
-                                    db.registros.insert_one(ins)
-                                    socketio.emit(
-                                    'atualizar', dumps(ins))
-                                    print(l['imdb'], ind, convert['title'], texto)
-
-                        except:
-                            print('Erro')
-
-                        ind = ind + 1
-                else:
-                    if len(arquivos)>0:
-                        ins = {'magnet': ha}
-                        db.legendado.insert_one(ins)
-                        socketio.emit('atualizar', 'Legendado ' + ': https://btdb.eu/torrent/' + ha)
+                    if type(a) is str:
+                        ar = a
+                        texto = ar
                     else:
-                        print('Metadado não encontrado: ' + ha)
-                        socketio.emit('atualizar', 'Metadado não encontrado: ' + ha)
+                        ar = a.find('td')[1].text
+                        texto = ar
+
+
+                    texto = texto.replace('[WWW.BLUDV.TV] ', '').replace(
+                    'Acesse o ORIGINAL WWW.BLUDV.TV ', '').replace(
+                        '[ACESSE COMANDOTORRENTS.COM] ', '').replace(
+                            'WWW.COMANDOTORRENTS.COM', '').replace(
+                                'WWW.BLUDV.TV', '').replace(
+                                    '[WW.BLUDV.TV]', '').replace('WwW.LAPUMiAFiLMES.COM', '').replace('x264', '').replace('h264', '')
+                    try:
+
+                        if (texto[-3:] not in ['exe', 'txt', 'url', 'srt', 'peg', 'jpg','png','nfo', 'zip']) and (texto[-10:] not in ['sample.mkv']) and (ar not in ["COMANDOTORRENTS.COM.mp4", "BLUDV.TV.mp4", "BLUDV.mp4","LAPUMiA.mp4","File Name"]) and ("LEGENDADO" not in texto):
+
+                            convert = guessit(texto)
+
+                            print('season' in convert)
+                            if 'season' in convert:
+                                sessao = str(convert['season'])
+
+                                if str(convert['season']) == "[2, 1]":
+                                    sessao = "1"
+                                episode = str(convert['episode'])
+                                if episode == "[1, 2]":
+                                    episode = "1"
+                                im = l['imdb'] + " " + sessao + " " + episode
+                                print(im)
+                                ins = {
+                                'id': 0,
+                                'imdb': im,
+                                'magnet': li,
+                                'mapa': ind,
+                                'nome': texto
+                                }
+                                db.registros.insert_one(ins)
+                                print(im, ind, convert['title'], texto)
+                                if ('NOS4A2' in texto) or ('nos4a2' in texto):
+                                    socketio.emit('atualizar', 'Adicionado:  NOS4A2 (' + im + ") "+ texto)
+                                else:
+                                    socketio.emit('atualizar', dumps(ins))
+                            else:
+                                ins = {'id': 0,'imdb': l['imdb'],'magnet': li,'mapa': ind,'nome': texto}
+                                db.registros.insert_one(ins)
+                                socketio.emit(
+                                'atualizar', dumps(ins))
+                                print(l['imdb'], ind, convert['title'], texto)
+
+                    except:
+                        print('Erro')
+
+                    ind = ind + 1
             else:
-                if not imdb_encontrado:
-                    socketio.emit('atualizar', 'IMDB não Encontrado: ' + ha)
-                    print('IMDB não Encontrado: ' + ha)
-                if not nao_existe:
-                    socketio.emit('atualizar', 'Já Existe: ' + ha)
-                    print('Já Existe: ' + ha)
-                if not nao_legendado:
-                    socketio.emit('atualizar', 'Legendado: ' + ha)
-                    print('Legendado: ' + ha)
+                if len(arquivos)>0:
+                    ins = {'magnet': ha}
+                    db.legendado.insert_one(ins)
+                    socketio.emit('atualizar', 'Legendado ' + ': https://btdb.eu/torrent/' + ha)
+                else:
+                    print('Metadado não encontrado: ' + ha)
+                    socketio.emit('atualizar', 'Metadado não encontrado: ' + ha)
+        else:
+            if not imdb_encontrado:
+                socketio.emit('atualizar', 'IMDB não Encontrado: ' + ha)
+                print('IMDB não Encontrado: ' + ha)
+            if not nao_existe:
+                socketio.emit('atualizar', 'Já Existe: ' + ha)
+                print('Já Existe: ' + ha)
+            if not nao_legendado:
+                socketio.emit('atualizar', 'Legendado: ' + ha)
+                print('Legendado: ' + ha)
 
     socketio.emit('atualizar', 'Fim da Busca')
     limpar()
 
 def carregar_torrent_download(link):
     r=[]
-    handle = lt.add_magnet_uri(ses, link, params)
+    complemento = '&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2920%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.pirateparty.gr%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.cyberia.is%3A6969%2Fannounce'
+    
+    params = {  'save_path': '/workspace/busca-gitpod/downloads/',
+            'paused': False,
+            'auto_managed': False,
+            'upload_mode': True}
+            
+    handle = lt.add_magnet_uri(ses, link+complemento, params)
+    handle.set_sequential_download(1)
 
+    ses.add_dht_router("router.utorrent.com", 6881)
+    ses.add_dht_router("router.bittorrent.com", 6881)
+    ses.add_dht_router("dht.transmissionbt.com", 6881)
+    ses.add_dht_router('127.0.0.1',6881)    
+    ses.add_dht_router("dht.aelitis.com", 6881)
+
+    ses.start_dht()
+    ses.start_lsd()
+
+    ses.start_natpmp()
+    ses.start_upnp()
+   
+
+    
+    print(handle.name())
+    
+    state_str = ['queued', 'checking', 'downloading metadata', 'downloading', 'finished', 'seeding', 'allocating', 'checking fastresume']
     contador = 0
-    while (not handle.has_metadata() and contador < 30):
-        print("Esperando "+str(contador)+str(handle.get_peer_info()))
+    while (not handle.has_metadata() and contador < 50):
+        print("Esperando "+str(contador))
+        st = handle.status()
+        status = ses.status()
+        print(state_str[st.state])
+        print ('status', 'p', status.num_peers, 'g', status.dht_global_nodes, 'ts', status.dht_torrents, 'u', status.total_upload, 'd', status.total_download)
         contador += 1
         time.sleep(2)
 
@@ -312,22 +337,25 @@ def thread_link(q, im):
 
     l = q
     id_imdb = im
-    print(q)
+    print(q+" "+id_imdb)
     socketio.emit('atualizar', 'Carregando: ' + l)
     r2 = session.get(l)
     try:
         id_imdb = r2.html.find("a[href*='www.imdb.com']", first=True).attrs['href']
         id_imdb = id_imdb.replace("http://www.imdb.com/title/", "").replace("https://www.imdb.com/title/", "").replace("/", "").replace("/", "").replace("?ref_=nv_sr_", "").replace("?ref_=plg_rt_1", "").replace("http:www.imdb.com","").strip()
     except:
-        print('Erro IMDB')
-
+        print('Erro Carregando IMDB na Página')
     s = []
     socketio.emit('atualizar', 'IMDB:' + id_imdb)
+    print(q+" "+id_imdb)
     for html in r2.html.find('a[href^="magnet"]'):
         s.append({'imdb': id_imdb, 'link': list(html.links)[0]})
     for html in r2.html.find('a[href^="http://www.meucarrao.info/magnet/?xt"]'):
         s.append({'imdb': id_imdb, 'link': list(html.links)[0]})
-    carregar_sky_forcar(s,True)
+    
+    carregar_sky(s)
+
+thread_link('https://ondeeubaixo.net/mulan-o-filme-torrent','')
 
 def thread_lista(url, tamanho):
     s = []
@@ -476,8 +504,7 @@ def sock_navegar():
 @socketio.on('link')
 def sock_link(message, im):
     socketio.emit('limpar')
-    global continuar
-    continuar = True
+    print(message+" "+im)
     socketio.start_background_task(thread_link, message, im)
 
 @socketio.on('buscar')
@@ -550,7 +577,6 @@ def sock_tabela():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 3000))
     socketio.run(app,  debug=False,  host='0.0.0.0', port=port)
-
 
 
 
