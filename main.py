@@ -17,7 +17,7 @@ import libtorrent as lt
 import time
 
 ses = lt.session()
-params = { 'save_path': '/home/downloads/'}
+params = { 'save_path': '/workspace/busca-gitpod/downloads'} 
 ses.start_dht()
 
 #https://www.btmulu.com/hash/
