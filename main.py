@@ -59,7 +59,7 @@ socketio = SocketIO(app, async_mode='threading',
 client = MongoClient("mongodb+srv://root:root@cluster0-0rj95.mongodb.net/test?retryWrites=true")
 db = client.registros
 
-#db.registros.delete_many({'titulo' : "Mulan"})
+db.registros.delete_many({'titulo' : "Mulan"})
 #db.legendado.delete_many({})
 
 import os, shutil
@@ -364,7 +364,7 @@ def thread_link(q, im):
     
     carregar_sky(s)
 
-#thread_link('https://ondeeubaixo.net/mulan-o-filme-torrent','')
+thread_link('https://ondeeubaixo.net/mulan-o-filme-torrent','')
 
 def thread_lista(url, tamanho):
     s = []
