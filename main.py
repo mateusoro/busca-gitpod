@@ -16,10 +16,28 @@ import os
 import libtorrent as lt
 import time
 
-ses = lt.session()
+ses = lt.session({
+	 'upload_rate_limit': 0
+	,'download_rate_limit': 0
+	,'active_downloads': -1
+	,'active_limit': -1
+	,'alert_mask': 0
+})
 
 ses.listen_on(6881, 6891)
-
+ses.add_extension('ut_metadata')
+ses.add_extension('ut_pex')
+ses.add_extension('smart_ban')
+ses.add_extension('metadata_transfer')
+ses.add_dht_router("router.utorrent.com", 6881)
+ses.add_dht_router("router.bittorrent.com", 6881)
+ses.add_dht_router("dht.transmissionbt.com", 6881)
+ses.add_dht_router('127.0.0.1',6881)    
+ses.add_dht_router("dht.aelitis.com", 6881)
+ses.start_dht()
+ses.start_lsd()
+ses.start_natpmp()
+ses.start_upnp()  
 
 # https://www.btmulu.com/hash/
 # ps -fA | grep main.py
@@ -38,8 +56,7 @@ log.setLevel(logging.ERROR)
 socketio = SocketIO(app, async_mode='threading',
                     cors_allowed_origins="*", logger=False, engineio_logger=False)
 
-client = MongoClient(
-    "mongodb+srv://root:root@cluster0-0rj95.mongodb.net/test?retryWrites=true")
+client = MongoClient("mongodb+srv://root:root@cluster0-0rj95.mongodb.net/test?retryWrites=true")
 db = client.registros
 
 #db.registros.delete_many({'titulo' : "Mulan"})
@@ -100,7 +117,7 @@ def carregar_sky(links):
             arquivos = []
             ingles = True                    
             print("Iniciando Download "+li)
-            arquivos = carregar_torrent_download(li)
+            arquivos = carregar_torrent_download(ha)
             for t in arquivos:
                 if "DUAL" in t:
                     ingles = None
@@ -195,29 +212,17 @@ def carregar_sky(links):
 
 def carregar_torrent_download(link):
     r=[]
-    complemento = '&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2920%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.pirateparty.gr%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.cyberia.is%3A6969%2Fannounce'
+    #complemento = '&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2920%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.pirateparty.gr%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.cyberia.is%3A6969%2Fannounce'
     
     params = {  'save_path': '/workspace/busca-gitpod/downloads/',
-            'paused': False,
-            'auto_managed': False,
-            'upload_mode': True}
-            
-    handle = lt.add_magnet_uri(ses, link+complemento, params)
+                'auto_managed': True,
+                'file_priorities': [0]*5}
+    print(link)
+      
+
+    handle = lt.add_magnet_uri(ses, "magnet:?xt=urn:btih:"+link, params)
     handle.set_sequential_download(1)
-
-    ses.add_dht_router("router.utorrent.com", 6881)
-    ses.add_dht_router("router.bittorrent.com", 6881)
-    ses.add_dht_router("dht.transmissionbt.com", 6881)
-    ses.add_dht_router('127.0.0.1',6881)    
-    ses.add_dht_router("dht.aelitis.com", 6881)
-
-    ses.start_dht()
-    ses.start_lsd()
-
-    ses.start_natpmp()
-    ses.start_upnp()
-   
-
+    handle.resume()
     
     print(handle.name())
     
@@ -225,6 +230,10 @@ def carregar_torrent_download(link):
     contador = 0
     while (not handle.has_metadata() and contador < 50):
         print("Esperando "+str(contador))
+        alerts = ses.pop_alerts()
+        for a in alerts: 
+            print(a.message())
+
         st = handle.status()
         status = ses.status()
         print(state_str[st.state])
@@ -355,7 +364,7 @@ def thread_link(q, im):
     
     carregar_sky(s)
 
-thread_link('https://ondeeubaixo.net/mulan-o-filme-torrent','')
+#thread_link('https://ondeeubaixo.net/mulan-o-filme-torrent','')
 
 def thread_lista(url, tamanho):
     s = []
