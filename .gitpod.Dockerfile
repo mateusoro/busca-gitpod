@@ -1,3 +1,3 @@
 FROM mateusoro/debian:1
 
-RUN apt-get install transmission -y
+RUN apt-get install transmission-cli -y
